@@ -22,18 +22,18 @@ class Broker(object):
         service = self.services[service_id]
         plan = service.plans[plan_id]
         sync = self._will_provision_synchronously(plan, accepts_incomplete)
-        with ProcessPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(service.create_instance, instance_id, plan, parameters,
-                                     organization_guid, space_guid)  # org and space are usually ignored
-            if sync:
-                service_instance = future.result(timeout=59)
-                if service_instance.dashboard_url:
-                    return {"dashboard_url": service_instance.dashboard_url}
-                else:
-                    return dict()
+        executor = ProcessPoolExecutor(max_workers=1)
+        future = executor.submit(service.create_instance, instance_id, plan, parameters,
+                                 organization_guid, space_guid)  # org and space are usually ignored
+        if sync:
+            service_instance = future.result(timeout=59)
+            if service_instance.dashboard_url:
+                return {"dashboard_url": service_instance.dashboard_url}
             else:
-                self.async_ops[instance_id] = future
-                raise ProvisioningAsynchronously
+                return dict()
+        else:
+            self.async_ops[instance_id] = future
+            raise ProvisioningAsynchronously
 
     def modify_instance(self, instance_id, service_id, plan_id, parameters, previous_values, accepts_incomplete):
         service = self.services[service_id]
@@ -41,14 +41,14 @@ class Broker(object):
             raise NotImplementedError
         plan = service.plans[plan_id]
         sync = self._will_provision_synchronously(plan, accepts_incomplete)
-        with ProcessPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(service.modify_instance, instance_id, plan, parameters, previous_values)
-            if sync:
-                _ = future.result(timeout=59)
-                return dict()
-            else:
-                self.async_ops[instance_id] = future
-                raise ProvisioningAsynchronously
+        executor = ProcessPoolExecutor(max_workers=1)
+        future = executor.submit(service.modify_instance, instance_id, plan, parameters, previous_values)
+        if sync:
+            _ = future.result(timeout=59)
+            return dict()
+        else:
+            self.async_ops[instance_id] = future
+            raise ProvisioningAsynchronously
 
     def bind_instance(self, instance_id, binding_id, service_id, plan_id, app_guid=None, parameters=None):
         credentials = self.services[service_id].bind(instance_id, binding_id, plan_id, app_guid, parameters)

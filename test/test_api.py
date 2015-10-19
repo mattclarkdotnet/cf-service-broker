@@ -5,6 +5,7 @@ import api
 import broker
 import service
 import logging
+from time import sleep
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
@@ -15,6 +16,8 @@ class TestService(service.BaseService):
         return "/tmp/"+instance_id
 
     def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
+        if not plan.provisionable_synchronously:
+            sleep(1)
         with open(self._filename(instance_id), 'w+') as f:
             f.write(json.dumps(plan.as_dict()))
         return service.BaseServiceInstance(plan, parameters)
@@ -25,6 +28,9 @@ class TestService(service.BaseService):
 
     def unbind(self, instance_id, binding_id, plan_id):
         pass
+
+    def modify_instance(self, instance_id, plan, parameters, previous_values):
+        raise NotImplementedError
 
 
 SERVICE1_GUID = '4d29b1b1-63c3-425e-97e4-913be8fdaf19'
@@ -97,6 +103,22 @@ class TestCreateInstance(APITestCase):
                     "accepts_incomplete": False}
         resp = self.tc.put('/v2/service_instances/' + self.instance_guid, headers=self.hdrs, data=json.dumps(req_data))
         self.assertEqual(resp.status_code, 422)
+
+    def test_create_instance_async(self):
+        req_data = {"organization_guid": self.org_guid,
+                    "plan_id": PLAN2_GUID,
+                    "service_id": SERVICE1_GUID,
+                    "space_guid": self.space_guid,
+                    "accepts_incomplete": True}
+        resp = self.tc.put('/v2/service_instances/' + self.instance_guid, headers=self.hdrs, data=json.dumps(req_data))
+        self.assertEqual(resp.status_code, 202)
+        resp = self.tc.get('/v2/service_instances/' + self.instance_guid + '/last_operation', headers=self.hdrs)
+        d = json.loads(resp.data.decode(encoding='UTF-8'))
+        self.assertEqual(d['state'], 'in progress')
+        sleep(2)
+        resp = self.tc.get('/v2/service_instances/' + self.instance_guid + '/last_operation', headers=self.hdrs)
+        d = json.loads(resp.data.decode(encoding='UTF-8'))
+        self.assertEqual(d['state'], 'succeeded')
 
     def test_bind_instance(self):
         req_data = {"plan_id": PLAN1_GUID,
