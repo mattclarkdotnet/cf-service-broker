@@ -35,6 +35,9 @@ class BaseService:
     def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
         raise NotImplementedError
 
+    def delete_instance(self, instance_id):
+        raise NotImplementedError
+
     def modify_instance(self, instance_id, plan, parameters, previous_values):
         raise NotImplementedError
 

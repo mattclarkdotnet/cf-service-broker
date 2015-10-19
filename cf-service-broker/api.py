@@ -45,6 +45,28 @@ def put_create_instance(data, instance_id):
         return json_response({}, 201)
 
 
+@app.route('/v2/service_instances/<instance_id>', methods=('DELETE',))
+@api_version
+@broker_auth
+def delete_delete_instance(instance_id):
+    try:
+        service_id = request.args['service_id']
+        plan_id = request.args['plan_id']
+    except KeyError:
+        return json_response({"description": "either service_id or plan_id missing from request query params"}, 400)
+    accepts_incomplete = request.args.get('accepts_incomplete', False)
+    try:
+        broker.delete_instance(instance_id, service_id, plan_id, accepts_incomplete)
+    except ProvisioningAsynchronously:
+        return json_response({}, 202)
+    except CannotProvisionSynchronouslyError as e:
+        return json_response(e.msg, 422)
+    except NoSuchEntityError:
+        return json_response({}, 410)
+    else:
+        return json_response({}, 200)
+
+
 @app.route('/v2/service_instances/<instance_id>', methods=('PATCH',))
 @api_version
 @broker_auth
@@ -94,7 +116,7 @@ def delete_unbind(instance_id, binding_id):
         return json_response({"description": "either service_id or plan_id missing from request query params"}, 400)
     try:
         broker.unbind_instance(instance_id=instance_id, binding_id=binding_id, service_id=service_id, plan_id=plan_id)
-    except NoSuchBindingError:
+    except NoSuchEntityError:
         return json_response({}, 410)
     else:
         return json_response({}, 200)

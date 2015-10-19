@@ -1,11 +1,13 @@
 from unittest import TestCase
 import json
 import base64
+from time import sleep
 import api
 import broker
 import service
+from exceptions import *
+import os
 import logging
-from time import sleep
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
@@ -22,15 +24,21 @@ class TestService(service.BaseService):
             f.write(json.dumps(plan.as_dict()))
         return service.BaseServiceInstance(plan, parameters)
 
+    def delete_instance(self, instance_id):
+        os.remove(self._filename(instance_id))
+
+    def modify_instance(self, instance_id, plan, parameters, previous_values):
+        raise NotImplementedError
+
     def bind(self, instance_id, binding_id, plan_id, app_guid, parameters):
         creds = {"file": self._filename(instance_id)}
         return creds
 
     def unbind(self, instance_id, binding_id, plan_id):
+        if binding_id == 'nosuchbinding111':
+            raise NoSuchEntityError
         pass
 
-    def modify_instance(self, instance_id, plan, parameters, previous_values):
-        raise NotImplementedError
 
 
 SERVICE1_GUID = '4d29b1b1-63c3-425e-97e4-913be8fdaf19'
@@ -120,6 +128,11 @@ class TestCreateInstance(APITestCase):
         d = json.loads(resp.data.decode(encoding='UTF-8'))
         self.assertEqual(d['state'], 'succeeded')
 
+    def test_delete_instance(self):
+        resp = self.tc.delete('/v2/service_instances/' + self.instance_guid + '?service_id=' + SERVICE1_GUID
+                              + '&plan_id=' + PLAN1_GUID, headers=self.hdrs)
+        self.assertEqual(resp.status_code, 200)
+
     def test_bind_instance(self):
         req_data = {"plan_id": PLAN1_GUID,
                     "service_id": SERVICE1_GUID,
@@ -131,3 +144,15 @@ class TestCreateInstance(APITestCase):
         d = json.loads(resp.data.decode(encoding='UTF-8'))
         self.assertIn('credentials', d)
         self.assertEqual(d['credentials'], {'file': '/tmp/'+self.instance_guid})
+
+    def test_unbind_instance(self):
+        resp = self.tc.delete('/v2/service_instances/' + self.instance_guid + '/service_bindings/' + self.binding_id
+                              + '?service_id=' + SERVICE1_GUID + '&plan_id=' + PLAN1_GUID,
+                              headers=self.hdrs)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_unbind_instance_nosuchbinding(self):
+        resp = self.tc.delete('/v2/service_instances/' + self.instance_guid + '/service_bindings/nosuchbinding111'
+                              + '?service_id=' + SERVICE1_GUID + '&plan_id=' + PLAN1_GUID,
+                              headers=self.hdrs)
+        self.assertEqual(resp.status_code, 410)

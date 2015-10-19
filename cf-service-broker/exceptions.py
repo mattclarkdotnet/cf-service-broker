@@ -36,5 +36,5 @@ class ProvisioningAsynchronously(Exception):
     pass
 
 
-class NoSuchBindingError(Exception):
+class NoSuchEntityError(Exception):
     pass

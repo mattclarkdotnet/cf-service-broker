@@ -35,10 +35,23 @@ class Broker(object):
             self.async_ops[instance_id] = future
             raise ProvisioningAsynchronously
 
+    def delete_instance(self, instance_id, service_id, plan_id, accepts_incomplete):
+        service = self.services[service_id]
+        plan = service.plans[plan_id]
+        sync = self._will_provision_synchronously(plan, accepts_incomplete)
+        executor = ProcessPoolExecutor(max_workers=1)
+        future = executor.submit(service.delete_instance, instance_id)
+        if sync:
+            _ = future.result(timeout=59)
+            return dict()
+        else:
+            self.async_ops[instance_id] = future
+            raise ProvisioningAsynchronously
+
     def modify_instance(self, instance_id, service_id, plan_id, parameters, previous_values, accepts_incomplete):
         service = self.services[service_id]
         if not service.plan_updateable:
-            raise NotImplementedError
+            raise UnsupportedPlanChangeError
         plan = service.plans[plan_id]
         sync = self._will_provision_synchronously(plan, accepts_incomplete)
         executor = ProcessPoolExecutor(max_workers=1)
