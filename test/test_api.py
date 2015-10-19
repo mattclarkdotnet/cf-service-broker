@@ -23,9 +23,8 @@ class TestService(service.BaseService):
         creds = {"file": self._filename(instance_id)}
         return creds
 
-    def unbind(self, instance_id, binding_id, plan_id, app_guid, parameters):
-        creds = {"file": self._filename(instance_id)}
-        return creds
+    def unbind(self, instance_id, binding_id, plan_id):
+        pass
 
 
 SERVICE1_GUID = '4d29b1b1-63c3-425e-97e4-913be8fdaf19'
