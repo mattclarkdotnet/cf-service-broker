@@ -1,4 +1,4 @@
-from flask import Flask, abort as flask_abort
+from flask import Flask, request
 from utils import check_api_version, basic_auth, json_data_in, json_response
 from broker import Broker
 from exceptions import *
@@ -48,8 +48,22 @@ def put_create_instance(data, instance_id):
 @app.route('/v2/service_instances/<instance_id>', methods=('PATCH',))
 @api_version
 @broker_auth
-def patch_modify_instance(instance_id):
-    flask_abort(501)
+@json_data_in
+def patch_modify_instance(data, instance_id):
+    try:
+        broker.modify_instance(instance_id=instance_id, **data)
+    except NotImplementedError:
+        return json_response({}, 501)
+    except ProvisioningAsynchronously:
+        return json_response({}, 202)
+    except CannotProvisionSynchronouslyError as e:
+        return json_response(e.msg, 422)
+    except UnsupportedPlanChangeError as e:
+        return json_response(e.msg, 422)
+    except CurrentlyNotPossiblePlanChangeError as e:
+        return json_response(e.msg, 422)
+    else:
+        return json_response({}, 201)
 
 
 @app.route('/v2/service_instances/<instance_id>/service_bindings/<binding_id>', methods=('PUT',))
@@ -58,7 +72,7 @@ def patch_modify_instance(instance_id):
 @json_data_in
 def put_bind(data, instance_id, binding_id):
     try:
-        creds = broker.bind_instance(instance_id=instance_id, binding_id=binding_id, **data)
+        credentials = broker.bind_instance(instance_id=instance_id, binding_id=binding_id, **data)
     except BindingNotSupportedError as e:
         return json_response(e.msg, 400)
     except BindingExistsError as e:
@@ -66,15 +80,24 @@ def put_bind(data, instance_id, binding_id):
     except AppGUIDRequiredError as e:
         return json_response(e.msg, 422)
     else:
-        return json_response({"credentials": creds}, 201)
+        return json_response({"credentials": credentials}, 201)
 
 
 @app.route('/v2/service_instances/<instance_id>/service_bindings/<binding_id>', methods=('DELETE',))
 @api_version
 @broker_auth
-def put_unbind(instance_id, binding_id):
-    flask_abort(501)
-
+def delete_unbind(instance_id, binding_id):
+    try:
+        service_id = request.args['service_id']
+        plan_id = request.args['plan_id']
+    except KeyError:
+        return json_response({"description": "either service_id or plan_id missing from request query params"}, 400)
+    try:
+        broker.unbind_instance(instance_id=instance_id, binding_id=binding_id, service_id=service_id, plan_id=plan_id)
+    except NoSuchBindingError:
+        return json_response({}, 410)
+    else:
+        return json_response({}, 200)
 
 if __name__ == '__main__':
     app.run(debug=1)

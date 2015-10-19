@@ -35,6 +35,28 @@ class Broker(object):
                 self.async_ops[instance_id] = future
                 raise ProvisioningAsynchronously
 
+    def modify_instance(self, instance_id, service_id, plan_id, parameters, previous_values, accepts_incomplete):
+        service = self.services[service_id]
+        if not service.plan_updateable:
+            raise NotImplementedError
+        plan = service.plans[plan_id]
+        sync = self._will_provision_synchronously(plan, accepts_incomplete)
+        with ProcessPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(service.modify_instance, instance_id, plan, parameters, previous_values)
+            if sync:
+                _ = future.result(timeout=59)
+                return dict()
+            else:
+                self.async_ops[instance_id] = future
+                raise ProvisioningAsynchronously
+
+    def bind_instance(self, instance_id, binding_id, service_id, plan_id, app_guid=None, parameters=None):
+        credentials = self.services[service_id].bind(instance_id, binding_id, plan_id, app_guid, parameters)
+        return credentials
+
+    def unbind_instance(self, instance_id, binding_id, service_id, plan_id):
+        self.services[service_id].unbind(instance_id, binding_id, plan_id)
+
     def get_provisioning_state(self, instance_id):
         future = self.async_ops[instance_id]
         if future.running():
@@ -43,9 +65,6 @@ class Broker(object):
             return "failed"
         if future.done():
             return "succeeded"
-
-    def bind_instance(self, instance_id, binding_id, service_id, plan_id, app_guid=None, parameters=None):
-        return self.services[service_id].bind(instance_id, binding_id, plan_id, app_guid, parameters)
 
     @staticmethod
     def _will_provision_synchronously(plan, accepts_incomplete):

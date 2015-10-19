@@ -11,13 +11,20 @@ log = logging.getLogger()
 
 
 class TestService(service.BaseService):
+    def _filename(self, instance_id):
+        return "/tmp/"+instance_id
+
     def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
-        with open('/tmp/'+instance_id, 'w+') as f:
+        with open(self._filename(instance_id), 'w+') as f:
             f.write(json.dumps(plan.as_dict()))
         return service.BaseServiceInstance(plan, parameters)
 
     def bind(self, instance_id, binding_id, plan_id, app_guid, parameters):
-        creds = {"file": "/tmp/"+instance_id}
+        creds = {"file": self._filename(instance_id)}
+        return creds
+
+    def unbind(self, instance_id, binding_id, plan_id, app_guid, parameters):
+        creds = {"file": self._filename(instance_id)}
         return creds
 
 

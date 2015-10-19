@@ -35,7 +35,13 @@ class BaseService:
     def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
         raise NotImplementedError
 
+    def modify_instance(self, instance_id, plan, parameters, previous_values):
+        raise NotImplementedError
+
     def bind(self, instance_id, binding_id, plan_id, app_guid, parameters):
+        raise NotImplementedError
+
+    def unbind(self, instance_id, binding_id, plan_id):
         raise NotImplementedError
 
     def as_dict(self):

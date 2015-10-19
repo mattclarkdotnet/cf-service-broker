@@ -10,7 +10,7 @@ class BindingExistsError(Exception):
 
 class AppGUIDRequiredError(Exception):
     msg = {"error": "AppGUIDRequiredError",
-           "description": "This service supports generation of credentials through binding an application only." }
+           "description": "This service supports generation of credentials through binding an application only."}
 
 
 class BindingNotSupportedError(Exception):
@@ -18,15 +18,23 @@ class BindingNotSupportedError(Exception):
            "description": "service does not support binding"}
 
 
-class ServiceConflictError(Exception): pass
+class UnsupportedPlanChangeError(Exception):
+    msg = {"error": "UnsupportedPlanChangeError",
+           "description": "service does not support your requested change of plan"}
 
 
-class ProvisioningAsynchronously(Exception): pass
+class CurrentlyNotPossiblePlanChangeError(Exception):
+    msg = {"error": "CurrentlyNotPossiblePlanChangeError",
+           "description": "service supports your requested change of plan but it is not possible right now"}
 
 
-class DashboardClient:
-    def __init__(self, guid, secret, dashboard_uri):
-        self.guid = guid
-        self.secret = secret
-        self.dashboard_uri = dashboard_uri
+class ServiceConflictError(Exception):
+    pass
 
+
+class ProvisioningAsynchronously(Exception):
+    pass
+
+
+class NoSuchBindingError(Exception):
+    pass
