@@ -26,11 +26,11 @@ class Broker(object):
         future = executor.submit(service.create_instance, instance_id, plan, parameters,
                                  organization_guid, space_guid)  # org and space are usually ignored
         if sync:
-            service_instance = future.result(timeout=59)
-            if service_instance.dashboard_url:
-                return {"dashboard_url": service_instance.dashboard_url}
+            dashboard_url = future.result(timeout=59)
+            if dashboard_url:
+                return {"dashboard_url": dashboard_url}
             else:
-                return dict()
+                return {}
         else:
             self.async_ops[instance_id] = future
             raise ProvisioningAsynchronously
