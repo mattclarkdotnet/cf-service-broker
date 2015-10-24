@@ -13,15 +13,15 @@ class Broker(object):
         self.services = {s.guid: s for s in service_list}
         self.async_ops = {}
 
-    def service_catalog(self):
+    def service_catalog(self) -> dict:
         return {"services": [s.as_dict() for s in self.services.values()]}
 
     def create_instance(self, instance_id, organization_guid, plan_id, service_id, space_guid,
                         parameters=None,
-                        accepts_incomplete=False):
+                        accepts_incomplete=False) -> dict:
         service = self.services[service_id]
         plan = service.plans[plan_id]
-        sync = self._will_provision_synchronously(plan, accepts_incomplete)
+        sync = self._match_synchronicity(plan, accepts_incomplete)
         executor = ProcessPoolExecutor(max_workers=1)
         future = executor.submit(service.create_instance, instance_id, plan, parameters,
                                  organization_guid, space_guid)  # org and space are usually ignored
@@ -35,10 +35,10 @@ class Broker(object):
             self.async_ops[instance_id] = future
             raise ProvisioningAsynchronously
 
-    def delete_instance(self, instance_id, service_id, plan_id, accepts_incomplete):
+    def delete_instance(self, instance_id, service_id, plan_id, accepts_incomplete) -> dict:
         service = self.services[service_id]
         plan = service.plans[plan_id]
-        sync = self._will_provision_synchronously(plan, accepts_incomplete)
+        sync = self._match_synchronicity(plan, accepts_incomplete)
         executor = ProcessPoolExecutor(max_workers=1)
         future = executor.submit(service.delete_instance, instance_id)
         if sync:
@@ -48,12 +48,12 @@ class Broker(object):
             self.async_ops[instance_id] = future
             raise ProvisioningAsynchronously
 
-    def modify_instance(self, instance_id, service_id, plan_id, parameters, previous_values, accepts_incomplete):
+    def modify_instance(self, instance_id, service_id, plan_id, parameters, previous_values, accepts_incomplete) -> dict:
         service = self.services[service_id]
         if not service.plan_updateable:
             raise UnsupportedPlanChangeError
         plan = service.plans[plan_id]
-        sync = self._will_provision_synchronously(plan, accepts_incomplete)
+        sync = self._match_synchronicity(plan, accepts_incomplete)
         executor = ProcessPoolExecutor(max_workers=1)
         future = executor.submit(service.modify_instance, instance_id, plan, parameters, previous_values)
         if sync:
@@ -63,14 +63,13 @@ class Broker(object):
             self.async_ops[instance_id] = future
             raise ProvisioningAsynchronously
 
-    def bind_instance(self, instance_id, binding_id, service_id, plan_id, app_guid=None, parameters=None):
-        credentials = self.services[service_id].bind(instance_id, binding_id, plan_id, app_guid, parameters)
-        return credentials
+    def bind_instance(self, instance_id, binding_id, service_id, plan_id, app_guid=None, parameters=None) -> dict:
+        return self.services[service_id].bind(instance_id, binding_id, plan_id, app_guid, parameters)
 
     def unbind_instance(self, instance_id, binding_id, service_id, plan_id):
         self.services[service_id].unbind(instance_id, binding_id, plan_id)
 
-    def get_provisioning_state(self, instance_id):
+    def get_provisioning_state(self, instance_id) -> str:
         future = self.async_ops[instance_id]
         if future.running():
             return "in progress"
@@ -80,7 +79,7 @@ class Broker(object):
             return "succeeded"
 
     @staticmethod
-    def _will_provision_synchronously(plan, accepts_incomplete):
+    def _match_synchronicity(plan, accepts_incomplete) -> bool:
         # accepts_incomplete=False and provisionable_synchronously=False -> CannotProvisionSynchronouslyException
         # accepts_incomplete=False and provisionable_synchronously=True  -> sync
         # accepts_incomplete=True  and provisionable_synchronously=False -> async
