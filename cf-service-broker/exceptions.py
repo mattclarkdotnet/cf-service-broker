@@ -38,3 +38,7 @@ class ProvisioningAsynchronously(Exception):
 
 class NoSuchEntityError(Exception):
     pass
+
+
+class AsyncOperationStateNotHandledError(Exception):
+    pass

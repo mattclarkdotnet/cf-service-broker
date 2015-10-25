@@ -4,7 +4,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger()
 
 
-class BaseService:
+class BaseService(object):
     def __init__(self, guid, name, description, bindable, plans,
                  dashboard_client=None,
                  tags=None,

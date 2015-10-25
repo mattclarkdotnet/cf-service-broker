@@ -77,6 +77,7 @@ class Broker(object):
             return "failed"
         if future.done():
             return "succeeded"
+        raise AsyncOperationStateNotHandledError
 
     @staticmethod
     def _match_synchronicity(plan, accepts_incomplete) -> bool:

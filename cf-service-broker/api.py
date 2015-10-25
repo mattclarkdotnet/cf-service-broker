@@ -25,7 +25,10 @@ def get_catalog():
 @api_version
 @broker_auth
 def get_last_operation(instance_id):
-    return json_response({"state": broker.get_provisioning_state(instance_id)}, 202)
+    try:
+        return json_response({"state": broker.get_provisioning_state(instance_id)}, 202)
+    except AsyncOperationStateNotHandledError:
+        return json_response({"error": "The async operation was not in a state the broker could understand"}, 500)
 
 
 @app.route('/v2/service_instances/<instance_id>', methods=('PUT',))
