@@ -24,7 +24,8 @@ class DummyService(service.BaseService):
     def _dirname(cls, instance_id):
         return os.path.join("/tmp/", instance_id)
 
-    def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
+    def create_instance(self, instance_id, plan_id, parameters, organization_guid, space_guid):
+        plan = self.plans[plan_id]
         if not plan.provisionable_synchronously:
             # The broker won't be waiting for us to return, so wait a bit in order that we don't complete
             # before any tests about async provisioning have done their thing
@@ -36,7 +37,8 @@ class DummyService(service.BaseService):
     def delete_instance(self, instance_id):
         shutil.rmtree(self._dirname(instance_id))
 
-    def modify_instance(self, instance_id, plan, parameters, previous_values):
+    def modify_instance(self, instance_id, plan_id, parameters, previous_values):
+        plan = self.plans[plan_id]
         with open(self._path(instance_id, plan.name), 'w+') as f:
             f.write(json.dumps(plan.as_dict()))
 

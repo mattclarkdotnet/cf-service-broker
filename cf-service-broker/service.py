@@ -25,13 +25,13 @@ class BaseService:
         self.requires = requires
         self.plan_updateable = plan_updateable
 
-    def create_instance(self, instance_id, plan, parameters, organization_guid, space_guid):
+    def create_instance(self, instance_id, plan_id, parameters, organization_guid, space_guid):
         raise NotImplementedError
 
     def delete_instance(self, instance_id):
         raise NotImplementedError
 
-    def modify_instance(self, instance_id, plan, parameters, previous_values):
+    def modify_instance(self, instance_id, plan_id, parameters, previous_values):
         raise NotImplementedError
 
     def bind(self, instance_id, binding_id, plan_id, app_guid, parameters):
